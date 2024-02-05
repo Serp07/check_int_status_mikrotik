@@ -1,0 +1,91 @@
+global deviceName [system identity get name]
+local iFaceNameFile int.txt
+local iFaceName <your interface>
+local previousStatusFile previousStatus.txt
+local previousStatus
+global previousName
+global telegramBotToken <BOT_TOKEN>
+global telegramChatID <your chat id>
+
+
+#[file print file=int.txt]
+#[file print file=previousStatus.txt]
+
+# Load the interface name from the file
+if ([len [file find name=$iFaceNameFile]]  0) do={
+    local fileContents [file get $iFaceNameFile contents]
+    set previousName $iFaceName
+    file set $iFaceNameFile contents=$previousName    
+} else={
+    log info Interface name file not found. Initializing with default value.
+    set previousName $fileContents
+}
+ 
+# Function to send Telegram notification
+    global sendTelegramNotification do={
+    global statusMessage
+    global previousName
+    global telegramBotToken
+    global telegramChatID
+    global deviceName
+    if ([ping address=8.8.8.8  interface=$previousName  interval= 500ms count=5]) do={
+        set statusMessage OK
+    } else {
+        set statusMessage  DOWN
+    }
+   
+
+    global message ( Device $deviceName connection to $previousName is $statusMessage!)
+    local url (httpsapi.telegram.orgbot . $telegramBotToken . sendMessagechat_id= . $telegramChatID . &text= . $message)
+    log info (Executing Telegram Notification...  . $message)
+
+    tool fetch url=$url keep-result=no
+}
+
+
+# Load the previous status from the file
+global previousStatusFile
+if ([len [file find name=$previousStatusFile]]  0) do={
+    local fileContents [file get $previousStatusFile contents]
+    set previousStatus $fileContents
+} else={
+    log info Previous status file not found. Initializing with default value.
+    set previousStatus UNKNOWN
+    file set $previousStatusFile contents=$previousStatus
+}
+
+# Load previous name from the interface
+  # local previousName [interface get [find] name]
+
+# Log the previous name (for debugging purposes)
+   #log info Previous name $previousName
+
+
+# Check the interface status
+local currentStatus [interface get $previousName running]
+if ($currentStatus = true) do={
+    #log info (connection to $previousName - OK!)
+
+    # Check if the status has changed
+    if ($previousStatus != OK) do={
+        $sendTelegramNotification
+    }
+    
+    set previousStatus OK
+} else {
+    #log error (connection to $previousName is DOWN!)
+
+    # Check if the status has changed
+    if ($previousStatus != DOWN) do={
+        $sendTelegramNotification
+    }
+
+    set previousStatus DOWN
+}
+
+# Save the current status to the file
+file set $previousStatusFile contents=$previousStatus
+
+
+# Save the current interface name to the file
+#file set $iFaceNameFile contents=$previousName
