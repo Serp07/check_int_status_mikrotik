@@ -1,6 +1,6 @@
 :global deviceName [/system identity get name]
 :local iFaceNameFile "int.txt"
-:local iFaceName "your interface"
+:local iFaceName "your interface name"
 :local previousStatusFile "previousStatus.txt"
 :local previousStatus
 :global previousName
